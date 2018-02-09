@@ -6,22 +6,19 @@ from __future__ import division, print_function
 
 import sys
 import os
-from pprint import pprint
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from my_community import mycommunity
 
-import networkx as nx
-import community
 import csv
-import numpy as np
 import random
-import cPickle as pickle
+import community
 import operator
-from pprint import pprint
 import operator
 import traceback
+import numpy as np
+import networkx as nx
 from sklearn.metrics.cluster import normalized_mutual_info_score
 
 
@@ -958,9 +955,11 @@ class MultiPlexSampling(object):
 
 if __name__ == '__main__':
 
-	fname = 'db/twitter_kp.csv'
-	budget = 500
-	lcosts = [1, 0.5, 0.5]
+	fname = sys.argv[1]
+	budget = sys.argv[2]
+	lcosts = map(float, sys.argv[3:])
 	
 	mcs = MultiPlexSampling(fname, budget, lcosts)
 	sample = mcs.getSample()
+
+	print(nx.info(sample))
