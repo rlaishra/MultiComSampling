@@ -1,5 +1,5 @@
 """
-Script for sampling when the cheaper layers are not completely known.
+Script for MCS
 """
 
 from __future__ import division, print_function
