@@ -103,7 +103,8 @@ class EdgeOverlap(object):
 			self._base_graph = self._base_graph.subgraph(nodes)
 
 		self._base_nodes = set(list(self._base_graph.nodes()))
-		self._base_edges = set([frozenset(e) for e in self._base_graph.edges()])
+		self._base_edges = set([frozenset(e) for e in\
+		 self._base_graph.edges()])
 
 
 	def _edgeOverlap(self, graph):
@@ -521,7 +522,8 @@ class BanditManager(object):
 
 	def initializeRBandits(self):
 		self._rolmanager = RoleManager(self._sample, self._queried)
-		self._rbandit = [MultiArmBandit(range(0, len(self._rolmanager.getRoles())),\
+		self._rbandit = [MultiArmBandit(\
+		 range(0, len(self._rolmanager.getRoles())),\
 		 epsilon=self._epsilon) for _ in self._layers]
 
 
@@ -529,7 +531,8 @@ class BanditManager(object):
 		self._hcommunity = CommunitHeirarchy(self._sample)
 		self._commanager = CommunityManager(self._hcommunity)
 
-		self._cbandit = [MultiArmBandit(self._hcommunity.getCommunityIds(l).values(),\
+		self._cbandit = [MultiArmBandit(\
+		 self._hcommunity.getCommunityIds(l).values(),\
 		 epsilon=self._epsilon) for l in self._layers]
 
 
@@ -538,7 +541,8 @@ class BanditManager(object):
 		Get the next layer and role
 		"""
 		larm, _ = self._lbandit.nextArm()
-		carm, _ = self._cbandit[larm].nextArm(arms=self._commanager.getActiveCommunities(larm))
+		carm, _ = self._cbandit[larm].nextArm(\
+		 arms=self._commanager.getActiveCommunities(larm))
 		rarm, _ = self._rbandit[larm].nextArm()
 
 		self._arm = (larm, carm, rarm)
@@ -571,10 +575,12 @@ class BanditManager(object):
 	def getNode(self):
 		self._nextArms()
 		
-		candidates = set(list(self._hcommunity.getNodes(self._arm[0], self._arm[1])))
+		candidates = set(list(self._hcommunity.getNodes(self._arm[0],\
+		 self._arm[1])))
 		candidates.difference_update(self._queried[0])
 
-		return self._rolmanager.getNode(self._arm[0], self._arm[2], candidates)
+		return self._rolmanager.getNode(self._arm[0],\
+		 self._arm[2], candidates)
 
 
 
@@ -659,7 +665,8 @@ class CommunitHeirarchy(object):
 		self._com_ids = []
 
 		for i in xrange(0, len(self._sample)):
-			partition = community.best_partition(self._sample[i], randomize=False)
+			partition = community.best_partition(self._sample[i],\
+			 randomize=False)
 			com = mycommunity.Community(self._sample[i], partition)
 			com.generateDendrogram(stop_max=False)
 			tree = com.communityTree()
@@ -747,7 +754,8 @@ class CommunitHeirarchy(object):
 		if len(children) == 0:
 			return []
 
-		return [ children[0], children[1] ] + self.getDecendents(layer, children[0]) + self.getDecendents(layer, children[1])
+		return [ children[0], children[1] ] + self.getDecendents(layer,\
+		 children[0]) + self.getDecendents(layer, children[1])
 
 		
 
@@ -783,7 +791,8 @@ class MABSample(object):
 
 		for i in xrange(1, len(self._sample)):
 			nodes = set(list(self._sample[i].nodes()))
-			nodes.difference_update(self._queried[0]) 		# nodes that have not been queried in layer 0
+			# nodes that have not been queried in layer 0
+			nodes.difference_update(self._queried[0]) 		
 
 			sg = self._sample[i].subgraph(nodes)
 
@@ -803,7 +812,8 @@ class MABSample(object):
 
 		# Remove singletons
 		self._sample[0].remove_nodes_from(nx.isolates(self._sample[0]))
-		self._ppart = community.best_partition(self._sample[0], randomize=False)
+		self._ppart = community.best_partition(self._sample[0],\
+		 randomize=False)
 		self._pmod = community.modularity(self._ppart, self._sample[0])
 
 
@@ -812,7 +822,8 @@ class MABSample(object):
 		Compute the change in community between communities of the
 		current sample and previous one
 		"""
-		return self._evaluation.partitionDistance(ppart, cpart, self._queried[0])
+		return self._evaluation.partitionDistance(ppart, cpart,\
+		 self._queried[0])
 
 
 	def _rewards(self, ppart, cpart):
@@ -947,7 +958,8 @@ class MultiPlexSampling(object):
 			self._mab.sample(budget[0])
 
 			self._budget.updateSlices()
-			budget = self._budget.allocateBudget(self._lweight.getEdgeOverlap())
+			budget = self._budget.allocateBudget(\
+			 self._lweight.getEdgeOverlap())
 
 		return self._sample[0]
 
