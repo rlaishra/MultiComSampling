@@ -1,16 +1,9 @@
 """
 Script for MCS
 """
-
-from __future__ import division, print_function
-
 import sys
 import os
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-
-from my_community import mycommunity
-
+import mycommunity
 import csv
 import random
 import community
@@ -33,16 +26,17 @@ class MultiArmBandit(object):
 		self.arms = arms
 		if est is None or len(est) == 0:
 			self.est = np.ones(len(self.arms))
-			self.est_hist = [[] for _ in xrange(0,len(self.arms))]
+			self.est_hist = [[] for _ in range(len(self.arms))]
 		else:
 			self.est = np.array(est)
 			self.est_hist = [[0] for e in est]
 		self.epsilon = epsilon
+		self._window_size = 5
 		
 
 	def nextArm(self, arms=None, rprob=0.0):
-		if len(self.arms) == len(self.removed):
-			return False
+		#if len(self.arms) == len(self.removed):
+		#	return False
 		return self.epsilonGreedy(arms=arms, rprob=rprob)
 
 	def getEst(self, arm):
@@ -61,8 +55,7 @@ class MultiArmBandit(object):
 		if r > self.epsilon:
 			# Select the best arm
 			# If multiple best arms, select randomly
-			est = np.array([self.est[i] if self.arms[i] in arms\
-			 else np.NINF for i in xrange(0, len(self.arms))])	
+			est = np.array([self.est[i] if self.arms[i] in arms else np.NINF for i in range(len(self.arms))])	
 			if np.random.random() > rprob:
 				# Select highest
 				i = np.random.choice(np.where(est == est.max())[0])
@@ -90,7 +83,7 @@ class EdgeOverlap(object):
 	def __init__(self, layer_count):
 		super(EdgeOverlap, self).__init__()
 		# Initialize with some default values
-		self._importance = [[10.0] for _ in xrange(0,layer_count)]
+		self._importance = [[1.0] for _ in range(layer_count)]
 
 
 	def _updateBaseGraph(self, graph, nodes=None):
@@ -130,7 +123,7 @@ class EdgeOverlap(object):
 		"""
 		self._updateBaseGraph(graphs[0], nodes)
 
-		for i in xrange(0, len(graphs)):
+		for i in range(len(graphs)):
 			importance = self._edgeOverlap(graphs[i])
 			if importance is not False:
 				self._importance[i].append(importance)
@@ -156,7 +149,7 @@ class Budget(object):
 		self._layer_costs = layer_costs
 
 		# Initial number of slices
-		self._slices = 20
+		self._slices = 10
 
 		# The budget consumed when slice was last updated
 		self._slices_last_update = 0 	
@@ -235,7 +228,7 @@ class Evaluation(object):
 	"""
 	Class for evaluation
 	"""
-	def __init__(self, graphs):
+	def __init__(self):
 		super(Evaluation, self).__init__()
 		
 	
@@ -267,27 +260,27 @@ class Evaluation(object):
 		c1 = self._getCommunity(part1)
 		c2 = self._getCommunity(part2)
 
-		c1 = {c:k.intersection(nodes) for c, k in c1.items()}
-		c2 = {c:k.intersection(nodes) for c, k in c2.items()}
+		c1 = {c:nodes.intersection(k) for c, k in c1.items()}
+		c2 = {c:nodes.intersection(k) for c, k in c2.items()}
 
-		m = xrange(0, max(len(c1), len(c2)))
+		m = range(max(len(c1), len(c2)))
 
-		m0 = dict.fromkeys(c2.keys(), 0)
-		mat = dict.fromkeys(c1.keys(), dict(mat0))
+		m = dict.fromkeys(c2.keys(), 0)
+		mat = dict.fromkeys(c1.keys(), dict(m))
 		#mat = {i: {j: 0 for j in c2} for i in c1}
 
 		total = 0
 		for i, k0 in c1.items():
 			for j, k1 in c2.items():
-				mat[i][j] = len(k0[i].intersection(k1[j]))
+				mat[i][j] = len(k0.intersection(k1))
 				total += mat[i][j]
 
 		if total <= 1:
 			return 1.0
 
 		assignment = []
-		rows = c1.keys()
-		cols = c2.keys()
+		rows = list(c1.keys())
+		cols = list(c2.keys())
 
 		while len(rows) > 0 and len(cols) > 0:
 			mval = 0
@@ -334,7 +327,7 @@ class RNDSample(object):
 		"""
 		Initialize sample by adding some random nodes to samples
 		"""
-		for i in xrange(1, len(self._sample)):
+		for i in range(1, len(self._sample)):
 			# Initial nodes to start
 			nodes = np.random.choice(list(self._graph[i].nodes()), 10,\
 			 replace=False)
@@ -346,7 +339,7 @@ class RNDSample(object):
 		"""
 		Sample graph with random walk
 		"""
-		for i in xrange(1, len(self._sample)):
+		for i in range(1, len(self._sample)):
 			sample = self._sample[i]
 			graph = self._graph[i]
 			queried = self._queried[i]
@@ -367,10 +360,10 @@ class RNDSample(object):
 
 			while c < budget[i] and u is not None\
 			 and self._budget.getBudgetLeft() > 0:
-				c += self._layer_costs[i]
-				self._budget.consumeBudget(self._layer_costs[i])
+				c += self._lcosts[i]
+				self._budget.consumeBudget(self._lcosts[i])
 
-				neighbors = set(list(graph.neighbors(u)))
+				neighbors = set(graph[u])
 				edges = [(u,v) for v in neighbors]
 				sample.add_edges_from(edges)
 
@@ -400,7 +393,7 @@ class CommunityManager(object):
 		super(CommunityManager, self).__init__()
 		self._hcommunity = hcommunity
 		self._initalCommunities()
-		self._generateMapping()
+		#self._generateMapping()
 
 
 	def _getComName(self, layer, i):
@@ -419,14 +412,14 @@ class CommunityManager(object):
 		self._rewards = []
 		self._crewards = []
 		
-		for l in xrange(0, self._hcommunity.getLayerCount()):
+		for l in range(0, self._hcommunity.getLayerCount()):
 			coms = self._hcommunity.getChildren(l, roots[l])
 			self._active_communities.append(coms)
 			self._crewards.append({c:[] for c in coms})
 
 
 	def getActiveCommunities(self, layer):
-		return self._active_communities[layer]
+		return list(self._active_communities[layer])
 
 
 	def updateCReward(self, layer, cid, value):
@@ -439,11 +432,12 @@ class CommunityManager(object):
 		"""
 		Check rewards to check if active community need to be changed
 		"""
-		if np.any([len(r) for l, r in self._crewards[layer].items()] < 5) :
+		if (np.array([len(r) for l, r in self._crewards[layer].items()]) < 5).any() :
 			return False
 
 		rewards = self._crewards[layer]
-		cid = self._active_communities[layer]
+		cid = list(self._active_communities[layer])
+		#print('cid', cid)
 
 		aval = np.mean(self._rewards)
 		astd = np.std(self._rewards)
@@ -476,7 +470,7 @@ class CommunityManager(object):
 		"""
 		active = self.getActiveCommunities(layer)
 
-		if comid not in active:
+		if cid not in active:
 			return None
 
 		if self._hcommunity.checkLeaf(layer, cid):
@@ -532,7 +526,7 @@ class BanditManager(object):
 		self._commanager = CommunityManager(self._hcommunity)
 
 		self._cbandit = [MultiArmBandit(\
-		 self._hcommunity.getCommunityIds(l).values(),\
+		 list(self._hcommunity.getCommunityIds(l).values()),\
 		 epsilon=self._epsilon) for l in self._layers]
 
 
@@ -540,10 +534,10 @@ class BanditManager(object):
 		"""
 		Get the next layer and role
 		"""
-		larm, _ = self._lbandit.nextArm()
-		carm, _ = self._cbandit[larm].nextArm(\
+		larm = self._lbandit.nextArm()
+		carm = self._cbandit[larm].nextArm(\
 		 arms=self._commanager.getActiveCommunities(larm))
-		rarm, _ = self._rbandit[larm].nextArm()
+		rarm = self._rbandit[larm].nextArm()
 
 		self._arm = (larm, carm, rarm)
 
@@ -635,7 +629,6 @@ class RoleManager(object):
 		# Sort by the value
 		candidates = sorted(candidates, key=candidates.get)
 
-		#print(r, vals[candidates[0]], vals[candidates[-1]])
 		# Return highest or lowest depending on role
 		if r[1] == 'lowest':
 			return candidates[0]
@@ -664,7 +657,7 @@ class CommunitHeirarchy(object):
 		self._dendrogram = []
 		self._com_ids = []
 
-		for i in xrange(0, len(self._sample)):
+		for i in range(len(self._sample)):
 			partition = community.best_partition(self._sample[i],\
 			 randomize=False)
 			com = mycommunity.Community(self._sample[i], partition)
@@ -674,7 +667,7 @@ class CommunitHeirarchy(object):
 
 			self._ocom.append(com)
 			self._dendrogram.append(com.flattenDendrogram(tree=tree))
-			self._com_ids.append({i:ids[i] for i in xrange(0, len(ids))})
+			self._com_ids.append({i:ids[i] for i in range(len(ids))})
 
 
 	def getCommunityIds(self, layer):
@@ -771,10 +764,11 @@ class MABSample(object):
 		self._budget = budget
 
 		self._bandit = BanditManager(self._graph, self._sample, self._queried)
+		self._evaluation = Evaluation()
 
 		self._step = 10
 		self._window_size = 10
-		self._importance_threshold = 5
+		self._importance_threshold = 0.75
 		self._scores = []
 		self._ppart = None 
 		self._bandit.initializeRBandits()
@@ -784,15 +778,15 @@ class MABSample(object):
 		"""
 		Add nodes and edges from 'valid' layers to sample of interest
 		"""
-		importances = self._lweight.getLayerImportance()
+		importances = self._lweight.getEdgeOverlap()
 
 		edges_add = set([])									# edges to add
 		edges_sub = set([])									# edges to remove
 
-		for i in xrange(1, len(self._sample)):
+		for i in range(1, len(self._sample)):
 			nodes = set(list(self._sample[i].nodes()))
 			# nodes that have not been queried in layer 0
-			nodes.difference_update(self._queried[0]) 		
+			nodes.difference_update(self._queried[0]) 	
 
 			sg = self._sample[i].subgraph(nodes)
 
@@ -802,16 +796,17 @@ class MABSample(object):
 				edges_add.update(edges)
 			else:
 				edges_sub.update(edges)
+		
 
 			# Edges to remove cannot be in edges to add
 			edges_sub.difference_update(edges_add)
-
+	
 		# Update sample 0
 		self._sample[0].add_edges_from([list(e) for e in edges_add])
 		self._sample[0].remove_edges_from([list(e) for e in edges_sub])
 
 		# Remove singletons
-		self._sample[0].remove_nodes_from(nx.isolates(self._sample[0]))
+		self._sample[0].remove_nodes_from(list(nx.isolates(self._sample[0])))
 		self._ppart = community.best_partition(self._sample[0],\
 		 randomize=False)
 		self._pmod = community.modularity(self._ppart, self._sample[0])
@@ -838,7 +833,6 @@ class MABSample(object):
 		"""
 		Check to see if we should end current iteration of MAB
 		"""
-		#print('mean', np.mean(self._past_distances))
 		if len(self._past_distances) > 5\
 		 and np.mean(self._past_distances[-self._window_size:]) < 0.1:
 			return True
@@ -911,13 +905,16 @@ class MultiPlexSampling(object):
 		self._graph = self._getMultiGraph(fnames)
 		self._sample = [nx.Graph() for _ in self._graph]
 
+		# Check if layer cost matches the number of layers
+		if len(costs) != len(self._graph):
+			print('Error. Number of layers in data and layer costs provided do not match.')
+
 		self._lcosts = costs
 		self._queried = [set([]) for _ in self._graph]
 
 		self._budget = Budget(budget, costs)
 		self._lweight = EdgeOverlap(len(self._graph))
 		self._roles = RoleManager(self._sample, self._queried)
-		self._evaluation = Evaluation(self._graph)
 
 		self._rnd = RNDSample(self._graph, self._sample, self._lcosts,\
 		 self._queried, self._budget)
@@ -936,9 +933,10 @@ class MultiPlexSampling(object):
 			reader = csv.reader(f, delimiter='\t')
 			for row in reader:
 				nodes.update([row[0], row[1]])
-				if row[2] not in edges:
-					edges[row[2]] = []
-				edges[row[2]].append((row[0], row[1]))
+				l = int(row[2])
+				if l not in edges:
+					edges[l] = []
+				edges[l].append((row[0], row[1]))
 
 		mgraph = [None for _ in edges]
 
@@ -968,10 +966,11 @@ class MultiPlexSampling(object):
 if __name__ == '__main__':
 
 	fname = sys.argv[1]
-	budget = sys.argv[2]
-	lcosts = map(float, sys.argv[3:])
+	sname = sys.argv[2]
+	budget = int(sys.argv[3])
+	lcosts = list(map(float, sys.argv[4:]))
 	
 	mcs = MultiPlexSampling(fname, budget, lcosts)
 	sample = mcs.getSample()
 
-	print(nx.info(sample))
+	nx.write_gml(sample, sname)
